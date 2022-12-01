@@ -52,6 +52,18 @@ class Transpose(nn.Module):
         x = x.transpose(self.dim0, self.dim1)
         return x
 
+class View(nn.Module):
+    def __init__(self, dim,  shape):
+        super(View, self).__init__()
+        self.dim = dim
+        self.shape = shape
+
+    def forward(self, input):
+        new_shape = list(input.shape)[:self.dim] + list(self.shape) + list(input.shape)[self.dim+1:]
+        return input.view(*new_shape)
+
+
+nn.Unflatten = View
 
 def forward_vit(pretrained, x):
     b, c, h, w = x.shape
