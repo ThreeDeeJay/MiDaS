@@ -61,7 +61,7 @@ class MidasNet_preprocessing(MidasNet):
         return MidasNet.forward(self, x)
 
 
-def run(model_path):
+def run(modelname):
     """Run MonoDepthNN to compute depth maps.
 
     Args:
@@ -73,20 +73,28 @@ def run(model_path):
 
     # load network
     #model = MidasNet(model_path, non_negative=True)
-    model = MidasNet_preprocessing(model_path, non_negative=True)
+    #model = MidasNet_preprocessing(model_path, non_negative=True)
+
+    import sys
+    midaspath = "../midas"
+    sys.path.append(midaspath)
+
+    from model_loader import load_model, default_models
+    model_path = default_models[modelname]
+    model, transform, net_w, net_h = load_model("cpu", os.path.join("../", model_path), modelname, optimize=False)
 
     model.eval()
     
     print("start processing")
 
     # input
-    img_input = np.zeros((3, 384, 384), np.float32)  
+    img_input = np.zeros((3, net_h, net_w), np.float32)  
 
     # compute
     with torch.no_grad():
         sample = torch.from_numpy(img_input).unsqueeze(0)
         prediction = model.forward(sample)
-        prediction = (
+        """prediction = (
             torch.nn.functional.interpolate(
                 prediction.unsqueeze(1),
                 size=img_input.shape[:2],
@@ -96,17 +104,34 @@ def run(model_path):
             .squeeze()
             .cpu()
             .numpy()
-        )
+        )"""
 
-    torch.onnx.export(model, sample, ntpath.basename(model_path).rsplit('.', 1)[0]+'.onnx', opset_version=9)    
+    torch.onnx.export(model, sample, ntpath.basename(model_path).rsplit('.', 1)[0]+'.onnx', opset_version=11)    
     
     print("finished")
 
+def whatdoesthisdo():
+    import torch.nn as nn
+
+    class View(nn.Module):
+        def __init__(self, dim,  shape):
+            super(View, self).__init__()
+            self.dim = dim
+            self.shape = shape
+
+        def forward(self, input):
+            new_shape = list(input.shape)[:self.dim] + list(self.shape) + list(input.shape)[self.dim+1:]
+            return input.view(*new_shape)
+
+    nn.Unflatten = View
 
 if __name__ == "__main__":
     # set paths
     # MODEL_PATH = "model.pt"
-    MODEL_PATH = "../model-f6b98070.pt"
+    #MODEL_PATH = "../model-f6b98070.pt"
     
     # compute depth maps
-    run(MODEL_PATH)
+    #run(MODEL_PATH)
+
+    whatdoesthisdo()
+    run("dpt_beit_large_512")
